@@ -1,37 +1,54 @@
-import paramiko
-import time
-from utils import RandomStringGenerator
+﻿from log_generator import LogGenerator
+from utils import is_valid_hostname_or_ip, is_valid_url, validate_positive_int
 
-##-----CONSTANTS------------------------------------------------------------------
-USER = "vboxuser"
 
-HOST = input("Enter the SSH server IP address: ")
+def prompt_choice() -> str:
+    print("Choose the log generation mode:")
+    print("1) SSH login attempts")
+    print("2) NGINX request simulation")
+    choice = input("Select 1 or 2: ").strip()
+    if choice not in {"1", "2"}:
+        raise ValueError("Please enter 1 for SSH or 2 for NGINX")
+    return choice
 
-LOOP_COUNT = int(input("Enter the number of login attempts: "))
 
-for i in range(LOOP_COUNT):
+def prompt_ssh() -> None:
+    host = input("Enter the SSH host (hostname or IP): ").strip()
+    username = input("Enter the SSH username (Leave blank for default 'vboxuser'): ").strip() or "vboxuser"
+    attempts = input("Enter the number of login attempts: ").strip()
+    mode = input("Enter mode [mixed, spray, bruteforce] (default mixed): ").strip().lower() or "mixed"
+
+    print("\nValidating SSH inputs...\n")
+    if not is_valid_hostname_or_ip(host):
+        raise ValueError("SSH host must be a valid hostname or IP address")
+
+    attempts_value = validate_positive_int(attempts, "login attempts")
+    LogGenerator.generate_ssh_logs(host, username, attempts_value, mode)
+
+
+def prompt_nginx() -> None:
+    target = input("Enter the NGINX target URL (http:// or https://): ").strip()
+    requests_count = input("Enter the number of requests to send: ").strip()
+    mode = input("Enter mode [mixed, normal, scan, sqli, xss, dos] (default mixed): ").strip().lower() or "mixed"
+
+    print("\nValidating NGINX inputs...\n")
+    if not is_valid_url(target):
+        raise ValueError("NGINX target must be a valid http:// or https:// URL")
+
+    requests_count_value = validate_positive_int(requests_count, "requests count")
+    LogGenerator.generate_nginx_logs(target, requests_count_value, mode)
+
+
+def main() -> None:
     try:
-        print(f"Attempt {i+1}: Trying to login with a random password...")
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        choice = prompt_choice()
+        if choice == "1":
+            prompt_ssh()
+        else:
+            prompt_nginx()
+    except ValueError as error:
+        print(f"Input validation failed: {error}")
 
-        client.connect(
-            HOST,
-            username=USER,
-            password=RandomStringGenerator().generate(),
-            timeout=5
-        )
 
-    except paramiko.AuthenticationException:
-        print(f"Attempt {i+1}: Failed login")
-
-    except Exception as e:
-        print(f"Attempt {i+1}: Error occurred - {e}")
-
-    finally:
-        try:
-            client.close()
-        except Exception as e:
-            print(f"Attempt {i+1}: Error occurred while closing connection - {e}")
-
-    time.sleep(5)  # Wait for 5 seconds before the next attempt
+if __name__ == "__main__":
+    main()
