@@ -34,4 +34,4 @@ for i in range(LOOP_COUNT):
         except Exception as e:
             print(f"Attempt {i+1}: Error occurred while closing connection - {e}")
 
-    time.sleep(1)
+    time.sleep(5)  # Wait for 5 seconds before the next attempt
